@@ -1,8 +1,14 @@
-import { makeAutoObservable, onBecomeObserved, onBecomeUnobserved } from "mobx";
+import {
+  makeAutoObservable,
+  onBecomeObserved,
+  onBecomeUnobserved,
+  runInAction,
+} from "mobx";
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
 export class WithQuery<TData, TResult = TData> {
   refetchIntervalId?: ReturnType<typeof setInterval> | null = null;
+  intervalSet = false; // Флаг для отслеживания, был ли установлен интервал
 
   constructor(
     private axiosConfig: AxiosRequestConfig,
@@ -18,13 +24,17 @@ export class WithQuery<TData, TResult = TData> {
       useTimeout?: boolean;
     } = {}
   ) {
-    makeAutoObservable(this);
+    makeAutoObservable(this, {}, { autoBind: true });
     this.viewConfig = { loadOnMount: true, ...this.viewConfig };
     if (this.viewConfig.loadOnMount) {
       onBecomeObserved(this, "data", this.load);
     }
     if (this.viewConfig.refetchInterval !== undefined) {
-      onBecomeObserved(this, "data", this.startRefetching);
+      onBecomeObserved(this, "data", () => {
+        if (!this.intervalSet) {
+          this.startRefetching();
+        }
+      });
       onBecomeUnobserved(this, "data", () => {
         this.stopRefetching();
       });
@@ -37,32 +47,46 @@ export class WithQuery<TData, TResult = TData> {
   data?: TResult = undefined;
   error?: unknown;
 
-  startRefetching = () => {
-    this.load();
-    if (this.viewConfig?.refetchInterval) {
-      this.refetchIntervalId = setInterval(
-        this.load,
-        this.viewConfig?.refetchInterval
-      );
+  private startRefetching = () => {
+    console.log("startRefetching called");
+    if (!this.intervalSet) {
+      this.load(); // Первый вызов для немедленной загрузки данных
+      if (this.viewConfig?.refetchInterval) {
+        this.refetchIntervalId = setInterval(() => {
+          console.log("Interval load called");
+          this.load();
+        }, this.viewConfig.refetchInterval);
+        this.intervalSet = true; // Устанавливаем флаг в true
+      }
     }
   };
 
-  stopRefetching = () => {
+  private stopRefetching() {
     if (this.refetchIntervalId) {
       clearInterval(this.refetchIntervalId);
       this.refetchIntervalId = null;
+      this.intervalSet = false; // Сбрасываем флаг при остановке интервала
+      console.log("Refetching stopped");
     }
-  };
+  }
 
-  load = async () => {
+  public async load() {
     try {
-      this.started = true;
-      this.isLoading = true;
+      runInAction(() => {
+        this.started = true;
+        this.isLoading = true;
+      });
+
       const { data } = await this.Request(this.axiosConfig, this.queryOptions);
+
       this.data = this.viewConfig?.transform
         ? this.viewConfig.transform(data)
         : (data as TResult);
-      this.state = "fulfilled";
+
+      runInAction(() => {
+        this.state = "fulfilled";
+      });
+
       this.viewConfig?.onSuccess?.(
         this.viewConfig?.transform ? this.data : data
       );
@@ -70,14 +94,18 @@ export class WithQuery<TData, TResult = TData> {
       if (axios.isCancel(error)) {
         console.log("Request canceled", error.message);
       } else {
-        this.error = error;
-        this.state = "rejected";
+        runInAction(() => {
+          this.error = error;
+          this.state = "rejected";
+        });
         this.viewConfig?.onError?.(this.error);
       }
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
-  };
+  }
 
   private async Request(
     config: AxiosRequestConfig,

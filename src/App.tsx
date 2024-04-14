@@ -38,7 +38,7 @@ export const TestWithQuery = observer(() => {
   return (
     <ul>
       {store.postsData.data?.map((u) => (
-        <li>{u.title}</li>
+        <li key={u.id}>{u.title}</li>
       ))}
     </ul>
   );

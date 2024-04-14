@@ -19,13 +19,12 @@ export class WithQueryStore {
       url: `https://jsonplaceholder.typicode.com/posts`,
     },
     {
-      loadOnMount: true,
-      onError: (error) => {
-        console.error("error", error);
-      },
-      onSuccess: (data) => {
-        console.log("success", data);
-      },
+      // onError: (error) => {
+      //   console.error("error", error);
+      // },
+      // onSuccess: (data) => {
+      //   console.log("success");
+      // },
       // refetchInterval: 3000,
     }
   );
