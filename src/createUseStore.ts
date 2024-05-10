@@ -1,9 +1,7 @@
+import { Context, useContext, useEffect, useRef, useState } from "react";
+import { IReactionDisposer, observable, runInAction } from "mobx";
 
-import { Context, useContext, useEffect, useRef, useState } from 'react';
-import { observable, runInAction } from 'mobx';
-import { IReactionDisposer } from 'mobx';
-
-export interface ViewModelConstructor<TContext extends any> {
+export interface ViewModelConstructor<TContext extends never> {
   systemFileName?: string;
   props?: Record<string, any>;
   context: TContext;
@@ -22,10 +20,10 @@ export function createUseStore<TContext extends any>(
   }
 ) {
   function useStore(): { context: TContext };
-  function useStore<TViewModel extends new (context: TContext) => ViewModelConstructor<TContext>>(
-    ViewModel: TViewModel
-  ): { vm: InstanceType<TViewModel>; context: TContext };
-  
+  function useStore<
+    TViewModel extends new (context: TContext) => ViewModelConstructor<TContext>
+  >(ViewModel: TViewModel): { vm: InstanceType<TViewModel>; context: TContext };
+
   function useStore<
     TViewModel extends new (
       context: TContext,
@@ -55,6 +53,7 @@ export function createUseStore<TContext extends any>(
 
     if (!ViewModel) return { context };
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [vm] = useState(() => {
       const instance = new ViewModel(context, observable(props || {}, exclude));
 
@@ -66,6 +65,7 @@ export function createUseStore<TContext extends any>(
       return instance;
     });
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
       if (isFirstRenderRef.current) {
         isFirstRenderRef.current = false;
@@ -76,16 +76,14 @@ export function createUseStore<TContext extends any>(
       }
     }, [props]);
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
       options?.afterMount?.(context, vm);
       vm.afterMount?.();
 
       return () => {
         options?.beforeUnmount?.(context, vm);
-
-        // @ts-ignore
-        vm.autorunDisposers?.forEach((disposer) => disposer());
-
+        vm.autorunDisposers?.forEach((disposer: () => void) => disposer());
         vm.beforeUnmount?.();
       };
     }, []);

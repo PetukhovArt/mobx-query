@@ -1,5 +1,5 @@
 import { makeAutoObservable } from "mobx";
-import { WithQuery } from "@/service/withQuery.ts";
+import { WithQuery } from "@/service/WithQueryApi.ts";
 
 export type TPost = {
   id: number;
@@ -19,12 +19,12 @@ export class WithQueryStore {
       url: `https://jsonplaceholder.typicode.com/posts`,
     },
     {
-      // onError: (error) => {
-      //   console.error("error", error);
-      // },
-      // onSuccess: (data) => {
-      //   console.log("success");
-      // },
+      onError: (error) => {
+        console.error("error", error);
+      },
+      onSuccess: (data) => {
+        console.log("success");
+      },
       // refetchInterval: 3000,
     }
   );

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
 import { Basic } from "./examples/WithContextBasic";
-import { WithQueryStore } from "@/service/WithQueryStore.ts";
+import { WithQueryStore } from "@/service/PostsService.ts";
 
 export const App = observer(() => {
   const queryClient = new QueryClient({
@@ -30,16 +30,17 @@ export const TestWithQuery = observer(() => {
 
   if (store.postsData.isLoading) return <div>Loading...</div>;
 
-  if (store.postsData.error) {
-    console.log(store.postsData.error);
-    // return <div>{'An error has occurred: ' + error.message}</div>;
+  if (store.postsData.isError) {
+    console.log("error");
   }
 
   return (
-    <ul>
-      {store.postsData.data?.map((u) => (
-        <li key={u.id}>{u.title}</li>
-      ))}
-    </ul>
+    <div style={{ overflow: "auto", height: "100vh" }}>
+      <ul>
+        {store.postsData.data?.map((u) => (
+          <li key={u.id}>{u.title}</li>
+        ))}
+      </ul>
+    </div>
   );
 });
