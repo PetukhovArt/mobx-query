@@ -16,16 +16,16 @@ export class WithQueryStore {
   postsData = new WithQuery<TPost[]>(
     {
       method: "GET",
-      url: `https://jsonplaceholder.typicode.com/posts`,
+      url: `https://jsonplaceholder.typicode.com/p`,
     },
     {
       onError: (error) => {
         console.error("error", error);
       },
       onSuccess: (data) => {
-        console.log("success");
+        console.log("response", data);
       },
-      // refetchInterval: 3000,
+      refetchInterval: 500,
     }
   );
 }

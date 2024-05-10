@@ -9,6 +9,7 @@ export class WithQuery<TData, TResult extends TData = TData> {
   private error?: unknown;
   //
   private interval?: ReturnType<typeof setInterval> | null = null;
+  private retryCount: number | null = null;
 
   constructor(
     private axiosConfig: AxiosRequestConfig,
@@ -28,7 +29,6 @@ export class WithQuery<TData, TResult extends TData = TData> {
     } = {}
   ) {
     makeAutoObservable(this, {}, { autoBind: true });
-
     this.options = {
       loadOnMount: true,
       retry: true,
@@ -37,11 +37,16 @@ export class WithQuery<TData, TResult extends TData = TData> {
       ...this.options,
     };
 
+    if (this.options.retry && this.options.retryCount) {
+      this.retryCount = this.options.retryCount;
+    } else if (this.options.retry && !this.options.retryCount) {
+      this.retryCount = 3;
+    }
+
     if (this.options.loadOnMount) {
       onBecomeObserved(this, "data", this.queryFn);
     }
     if (this.options.refetchInterval) {
-      onBecomeObserved(this, "data", () => this.withIntervalQuery());
       onBecomeUnobserved(this, "data", () => this.stopInterval());
     }
   }
@@ -70,6 +75,10 @@ export class WithQuery<TData, TResult extends TData = TData> {
     this.isQuerySuccess = value;
   }
 
+  private setRetryCount(value: number | null) {
+    this.retryCount = value;
+  }
+
   private setIsError(value: boolean) {
     this.isQueryError = value;
   }
@@ -86,15 +95,6 @@ export class WithQuery<TData, TResult extends TData = TData> {
     this.error = value;
   }
 
-  private withIntervalQuery() {
-    if (this.options?.refetchInterval && this.axiosConfig.method === "GET") {
-      this.interval = setInterval(
-        () => this.queryFn(),
-        this.options.refetchInterval
-      );
-    }
-  }
-
   private stopInterval() {
     if (this.interval) {
       clearInterval(this.interval);
@@ -102,7 +102,7 @@ export class WithQuery<TData, TResult extends TData = TData> {
     }
   }
 
-  public async queryFn(retryCount = this.options.retryCount) {
+  public async queryFn() {
     try {
       this.setIsLoading(true);
       const { data } = await this.Request(this.axiosConfig, this.queryOptions);
@@ -122,14 +122,26 @@ export class WithQuery<TData, TResult extends TData = TData> {
       }
       this.options?.onError?.(this.error);
       if (
-        retryCount &&
         this.options.retryCount &&
-        retryCount < this.options.retryCount
+        this.retryCount &&
+        this.retryCount < this.options.retryCount
       ) {
-        setTimeout(() => this.queryFn(retryCount + 1), this.options.retryDelay);
+        setTimeout(() => this.queryFn(), this.options.retryDelay);
       }
     } finally {
       this.setIsLoading(false);
+      if (this.options.retry && this.retryCount) {
+        this.setRetryCount(this.retryCount - 1);
+      } else if (this.options.retry && this.retryCount === 1) {
+        this.setRetryCount(null);
+      }
+      if (
+        !this.interval &&
+        this.options.refetchInterval &&
+        this.axiosConfig.method === "GET"
+      ) {
+        this.interval = setInterval(this.queryFn, this.options.refetchInterval);
+      }
     }
   }
 

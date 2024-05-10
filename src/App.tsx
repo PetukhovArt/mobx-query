@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
-import { Basic } from "./examples/WithContextBasic";
 import { WithQueryStore } from "@/service/PostsService.ts";
 
 export const App = observer(() => {
@@ -17,10 +16,7 @@ export const App = observer(() => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div>
-        <TestWithQuery />
-        <Basic />
-      </div>
+      <TestWithQuery />
     </QueryClientProvider>
   );
 });
@@ -28,7 +24,7 @@ export const App = observer(() => {
 export const TestWithQuery = observer(() => {
   const [store] = useState(() => new WithQueryStore());
 
-  if (store.postsData.isLoading) return <div>Loading...</div>;
+  // if (store.postsData.isLoading) return <div>Loading...</div>;
 
   if (store.postsData.isError) {
     console.log("error");
