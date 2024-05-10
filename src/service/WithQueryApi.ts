@@ -9,6 +9,7 @@ export class WithQuery<TData, TResult extends TData = TData> {
   private error?: unknown;
   //
   private interval?: ReturnType<typeof setInterval> | null = null;
+  private retryTimeout: NodeJS.Timeout | undefined = undefined;
   private retryCount: number | null = null;
 
   constructor(
@@ -39,8 +40,6 @@ export class WithQuery<TData, TResult extends TData = TData> {
 
     if (this.options.retry && this.options.retryCount) {
       this.retryCount = this.options.retryCount;
-    } else if (this.options.retry && !this.options.retryCount) {
-      this.retryCount = 3;
     }
 
     if (this.options.loadOnMount) {
@@ -113,6 +112,7 @@ export class WithQuery<TData, TResult extends TData = TData> {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       //@ts-ignore
       this.options?.onSuccess?.(this.queryData);
+      this.setRetryCount(this.options.retryCount || 3);
     } catch (error) {
       this.setIsError(true);
       this.setError(error);
@@ -121,26 +121,38 @@ export class WithQuery<TData, TResult extends TData = TData> {
         return;
       }
       this.options?.onError?.(this.error);
-      if (
-        this.options.retryCount &&
-        this.retryCount &&
-        this.retryCount < this.options.retryCount
-      ) {
-        setTimeout(() => this.queryFn(), this.options.retryDelay);
+      console.log(this.retryCount);
+
+      if (this.options.retry && this.retryCount === 0) {
+        this.retryTimeout = undefined;
+        clearTimeout(this.retryTimeout);
+        return;
+      }
+
+      if (this.options.retry && this.retryCount && this.retryCount > 0) {
+        this.setRetryCount(this.retryCount - 1);
+        clearTimeout(this.retryTimeout); // Очистка предыдущего таймера
+        this.retryTimeout = setTimeout(
+          this.queryFn.bind(this),
+          this.options.retryDelay
+        );
       }
     } finally {
       this.setIsLoading(false);
-      if (this.options.retry && this.retryCount) {
-        this.setRetryCount(this.retryCount - 1);
-      } else if (this.options.retry && this.retryCount === 1) {
-        this.setRetryCount(null);
+      if (this.error) {
+        this.stopInterval();
+        // eslint-disable-next-line no-unsafe-finally
+        return;
       }
       if (
         !this.interval &&
         this.options.refetchInterval &&
         this.axiosConfig.method === "GET"
       ) {
-        this.interval = setInterval(this.queryFn, this.options.refetchInterval);
+        this.interval = setInterval(
+          this.queryFn.bind(this),
+          this.options.refetchInterval
+        );
       }
     }
   }
