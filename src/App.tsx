@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
 import { WithQueryStore } from "@/service/PostsService.ts";
+import {TestComponents} from '@/different/TestComponents.tsx';
 
 export const App = observer(() => {
   const queryClient = new QueryClient({
@@ -16,7 +17,8 @@ export const App = observer(() => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TestWithQuery />
+      {/*<TestWithQuery />*/}
+      <TestComponents/>
     </QueryClientProvider>
   );
 });
@@ -31,7 +33,7 @@ export const TestWithQuery = observer(() => {
   }
 
   return (
-    <div style={{ overflow: "auto", height: "100vh" }}>
+    <div style={{ overflow: "auto", height: "100%" }}>
       <ul>
         {store.postsData.data?.map((u) => (
           <li key={u.id}>{u.title}</li>
